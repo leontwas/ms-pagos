@@ -1,38 +1,58 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import {
+  Controller, Get, Post, Body, Param, Query, ParseIntPipe, HttpCode, HttpStatus,
+} from '@nestjs/common';
 import { PagosService } from './pagos.service';
+import { CreatePagoDto } from './dto/create-pago.dto';
+import { CreatePreferenciaDto } from './dto/create-preferencia.dto';
 
 @Controller('pagos')
 export class PagosController {
-  constructor(private readonly pagosService: PagosService) { }
+  constructor(private readonly pagosService: PagosService) {}
 
   @Get()
-  obtenerPagos() {
-    return this.pagosService.obtenerPagos();
+  findAll(
+    @Query('reservaId') reservaId?: string,
+    @Query('tipoPago') tipoPago?: string,
+    @Query('metodoPago') metodoPago?: string,
+    @Query('limite') limite?: string,
+  ) {
+    // Filtrar por reserva incluye el saldo pendiente de esa reserva.
+    if (reservaId) {
+      return this.pagosService.findByReserva(+reservaId);
+    }
+    return this.pagosService.findAll({
+      tipoPago,
+      metodoPago,
+      limite: limite ? +limite : undefined,
+    });
+  }
+
+  @Get('estadisticas')
+  getEstadisticas() {
+    return this.pagosService.getEstadisticas();
   }
 
   @Get(':id')
-  obtenerPagoPorId(@Param('id') id: string) {
-    return this.pagosService.obtenerPagoPorId(id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.pagosService.findOne(id);
   }
 
   @Post()
-  registrarPago(@Body() dto: {
-    reservaId: number;
-    monto: number;
-    tipoPago: string;
-    metodoPago: string;
-    observaciones?: string;
-  }) {
-    return this.pagosService.registrarPago(dto);
+  @HttpCode(HttpStatus.CREATED)
+  create(@Body() dto: CreatePagoDto) {
+    return this.pagosService.create(dto);
   }
 
   @Post('mercadopago/preferencia')
-  crearPreferencia(@Body() dto: {
-    title: string;
-    unit_price: number;
-    quantity: number;
-    reservaId: number;
-  }) {
+  @HttpCode(HttpStatus.CREATED)
+  crearPreferencia(@Body() dto: CreatePreferenciaDto) {
     return this.pagosService.crearPreferencia(dto);
+  }
+
+  @Post('mercadopago/webhook')
+  @HttpCode(HttpStatus.OK)
+  async webhook(@Body() body: any, @Query() query: any) {
+    await this.pagosService.procesarWebhook(body, query);
+    return { received: true };
   }
 }

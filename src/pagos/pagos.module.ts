@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { PagosService } from './pagos.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { HttpModule } from '@nestjs/axios';
 import { PagosController } from './pagos.controller';
-import { SupabaseModule } from '../supabase/supabase.module';
+import { PagosService } from './pagos.service';
+import { Pago } from './entities/pago.entity';
 
 @Module({
+  imports: [TypeOrmModule.forFeature([Pago]), HttpModule],
   controllers: [PagosController],
   providers: [PagosService],
-  imports: [SupabaseModule],
 })
-export class PagosModule { }
+export class PagosModule {}
